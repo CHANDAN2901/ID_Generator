@@ -135,9 +135,14 @@ export default function App() {
           <Section title="Upload Template">
             <input type="file" accept="image/*" onChange={(e)=>e.target.files?.[0] && onUploadTemplate(e.target.files[0])} />
             {template && (
-              <div className="text-sm text-neutral-600 mt-2">Uploaded: <a className="text-blue-600 underline" href={toAbsoluteUrl(template.image?.url)} target="_blank">view</a></div>
+              <div className="text-sm text-neutral-600 mt-2 space-y-1">
+                <div>Uploaded: <a className="text-blue-600 underline" href={toAbsoluteUrl(template.image?.url)} target="_blank">view</a></div>
+                {template.imageMeta?.width && template.imageMeta?.height && (
+                  <div className="text-xs text-neutral-500">Size: {template.imageMeta.width} × {template.imageMeta.height}px</div>
+                )}
+              </div>
             )}
-            <div className="mt-3 text-xs text-neutral-500">Click "Save Layout" when you finish arranging fields.</div>
+            <div className="mt-3 text-xs text-neutral-500">Tip: Drag fields on the template and drag edges to resize. Click "Save Layout" when done.</div>
           </Section>
 
           <Section title="Upload Excel Sheet">
@@ -146,17 +151,23 @@ export default function App() {
               <div className="text-sm text-neutral-600 mt-2">Rows: {dataset.rowCount}</div>
             )}
 
+            {fieldsDirty && (
+              <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 inline-block">You have unsaved layout changes</div>
+            )}
           </Section>
 
           <Section title="Preview">
             {previewUrl ? (
-              <img src={previewUrl} alt="Preview" className="rounded border" />
+              <img src={previewUrl} alt="Preview" className="rounded border max-h-72 object-contain" />
             ) : (
               <div className="text-sm text-neutral-500">No preview yet.</div>
             )}
-            <div className="mt-3 flex gap-2">
-              <button className="px-3 py-1.5 bg-neutral-900 text-white rounded text-sm" onClick={onPreview} disabled={!template || !dataset}>Generate Preview</button>
-              <button className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm" onClick={onDownloadPDF} disabled={!template || !dataset}>Download PDF</button>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button className="px-3 py-1.5 bg-neutral-900 text-white rounded text-sm disabled:opacity-50" onClick={onPreview} disabled={!template || !dataset}>Generate Preview</button>
+              <button className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm disabled:opacity-50" onClick={onDownloadPDF} disabled={!template || !dataset}>Download PDF</button>
+              {previewUrl && (
+                <button className="px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded text-sm" onClick={()=>setPreviewUrl('')}>Clear Preview</button>
+              )}
             </div>
             {status && <div className="text-xs text-neutral-500 mt-2">{status}</div>}
           </Section>
@@ -181,10 +192,12 @@ export default function App() {
               {/* Right: field editor over template image */}
               <div className="col-span-12 lg:col-span-8">
                 <FieldEditor imageUrl={toAbsoluteUrl(template?.image?.url)} fields={fields} onChange={handleFieldsChange} />
-                <div className="mt-3 flex gap-2">
+                <div className="mt-3 flex flex-wrap items-center gap-3">
                   <button className="px-3 py-1.5 bg-emerald-600 text-white rounded text-sm disabled:opacity-50" onClick={onSaveLayout} disabled={!template || (!fieldsDirty && !mappingChanged)}>
                     Save Layout & Mapping
                   </button>
+                  {!template && <span className="text-xs text-neutral-500">Upload a template to enable saving</span>}
+                  {(!fieldsDirty && !mappingChanged) && <span className="text-xs text-neutral-500">No changes</span>}
                 </div>
               </div>
             </div>

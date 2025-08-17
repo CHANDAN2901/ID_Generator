@@ -16,7 +16,7 @@ const app = express();
 
 // Ensure upload directories exist for local storage
 const UPLOAD_DIR = process.env.UPLOAD_DIR || 'uploads';
-['', 'templates', 'datasets', 'previews', 'outputs'].forEach((sub) => {
+['', 'outputs'].forEach((sub) => {
   const dir = path.join(process.cwd(), UPLOAD_DIR, sub);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });

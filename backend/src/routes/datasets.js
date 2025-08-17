@@ -1,7 +1,5 @@
 const express = require('express');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 const xlsx = require('xlsx');
 const Dataset = require('../models/Dataset');
 
@@ -46,19 +44,7 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-router.delete('/:id', async (req, res, next) => {
-  try {
-    const doc = await Dataset.findByIdAndDelete(req.params.id);
-    if (!doc) return res.sendStatus(404);
-    if (doc.sourceFile?.key) {
-      const abs = path.join(process.cwd(), doc.sourceFile.key);
-      fs.existsSync(abs) && fs.unlinkSync(abs);
-    }
-    res.sendStatus(204);
-  } catch (err) {
-    next(err);
-  }
-});
+
 
 module.exports = router;
 

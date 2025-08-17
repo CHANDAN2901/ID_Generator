@@ -1,10 +1,10 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+
 const sharp = require('sharp');
 const Template = require('../models/Template');
-const { uploadBuffer, deleteFile } = require('../utils/gridfs');
+const { uploadBuffer } = require('../utils/gridfs');
 
 const router = express.Router();
 
@@ -42,56 +42,13 @@ router.post('/', upload.single('file'), async (req, res, next) => {
   }
 });
 
-// List templates
-router.get('/', async (req, res, next) => {
-  try {
-    const items = await Template.find().sort({ createdAt: -1 });
-    res.json(items);
-  } catch (err) {
-    next(err);
-  }
-});
 
-// Get template by id
-router.get('/:id', async (req, res, next) => {
-  try {
-    const item = await Template.findById(req.params.id);
-    if (!item) return res.sendStatus(404);
-    res.json(item);
-  } catch (err) {
-    next(err);
-  }
-});
 
-// Update fields
-router.put('/:id/fields', async (req, res, next) => {
-  try {
-    const { fields } = req.body;
-    const item = await Template.findByIdAndUpdate(
-      req.params.id,
-      { $set: { fields } },
-      { new: true }
-    );
-    res.json(item);
-  } catch (err) {
-    next(err);
-  }
-});
 
-// Update mapping
-router.put('/:id/mapping', async (req, res, next) => {
-  try {
-    const { mapping } = req.body;
-    const item = await Template.findByIdAndUpdate(
-      req.params.id,
-      { $set: { mapping } },
-      { new: true }
-    );
-    res.json(item);
-  } catch (err) {
-    next(err);
-  }
-});
+
+
+
+
 
 // Update fields and/or mapping together
 router.put('/:id/layout', async (req, res, next) => {
@@ -112,20 +69,6 @@ router.put('/:id/layout', async (req, res, next) => {
 });
 
 
-// Delete template
-router.delete('/:id', async (req, res, next) => {
-  try {
-    const item = await Template.findByIdAndDelete(req.params.id);
-    if (!item) return res.sendStatus(404);
-    // delete file from GridFS if applicable
-    if (item.image?.storage === 'gridfs' && item.image?.key) {
-      try { await deleteFile(item.image.key, 'templates'); } catch (_) {}
-    }
-    res.sendStatus(204);
-  } catch (err) {
-    next(err);
-  }
-});
 
 module.exports = router;
 

@@ -105,7 +105,7 @@ ID_Generator/
 cd backend
 cp .env.example .env   # Edit .env with your MongoDB URI
 npm install
-npm run dev            # Starts server on http://localhost:5050
+npm run dev            # Starts server on http://localhost:5000
 ```
 
 ### 2. Frontend
@@ -185,7 +185,7 @@ npm run dev            # Starts frontend on http://localhost:5173
 ## 📖 Notes
 - All environment variables are configured via `.env` files in each folder.
 - `uploads/` stores generated files and previews (ignored by git).
-- For development, backend runs on port 5050, frontend on 5173 by default.
+- For development, backend runs on port 5000, frontend on 5173 by default.
 
 ---
 

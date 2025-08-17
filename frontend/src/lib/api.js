@@ -21,15 +21,9 @@ export async function uploadTemplate(file, name) {
   return data
 }
 
-export async function listTemplates() {
-  const { data } = await api.get('/templates')
-  return data
-}
 
-export async function getTemplate(id) {
-  const { data } = await api.get(`/templates/${id}`)
-  return data
-}
+
+
 
 export async function saveLayout(id, { fields, mapping }) {
   const { data } = await api.put(`/templates/${id}/layout`, { fields, mapping })
