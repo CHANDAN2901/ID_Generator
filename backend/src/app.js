@@ -25,7 +25,15 @@ const UPLOAD_DIR = process.env.UPLOAD_DIR || 'uploads';
 connectDB();
 
 // Middleware
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || true }));
+const allowedOrigins = [
+  process.env.CLIENT_ORIGIN,
+  'http://localhost:5173',
+  'https://id-generator-mu.vercel.app'
+];
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(morgan('dev'));
 

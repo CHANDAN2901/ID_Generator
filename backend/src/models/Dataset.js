@@ -11,7 +11,7 @@ const DatasetSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     sourceFile: {
-      storage: { type: String, enum: ['local', 's3', 'gridfs'], default: 'local' },
+      storage: { type: String, enum: ['local', 's3', 'gridfs'], default: 'gridfs' },
       key: String,
       url: String,
       size: Number,

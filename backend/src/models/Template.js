@@ -26,7 +26,7 @@ const TemplateSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     image: {
-      storage: { type: String, enum: ['local', 's3', 'gridfs'], default: 'local' },
+      storage: { type: String, enum: ['local', 's3', 'gridfs'], default: 'gridfs' },
       key: String,
       url: String,
     },
