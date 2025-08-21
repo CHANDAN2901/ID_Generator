@@ -37,14 +37,20 @@ router.get('/:id', async (req, res, next) => {
   try {
     const doc = await Dataset.findById(req.params.id).lean();
     if (!doc) return res.sendStatus(404);
+    
     const sampleRows = (doc.rows || []).slice(0, 5).map((r) => r.data);
-    res.json({ _id: doc._id, name: doc.name, headers: doc.headers, rowCount: doc.rowCount, sampleRows });
+    
+    res.json({ 
+      _id: doc._id, 
+      name: doc.name, 
+      headers: doc.headers, 
+      rowCount: doc.rowCount, 
+      sampleRows 
+    });
   } catch (err) {
     next(err);
   }
 });
-
-
 
 module.exports = router;
 

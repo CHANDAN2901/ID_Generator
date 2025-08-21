@@ -21,10 +21,6 @@ export async function uploadTemplate(file, name) {
   return data
 }
 
-
-
-
-
 export async function saveLayout(id, { fields, mapping }) {
   const { data } = await api.put(`/templates/${id}/layout`, { fields, mapping })
   return data

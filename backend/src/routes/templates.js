@@ -42,14 +42,6 @@ router.post('/', upload.single('file'), async (req, res, next) => {
   }
 });
 
-
-
-
-
-
-
-
-
 // Update fields and/or mapping together
 router.put('/:id/layout', async (req, res, next) => {
   try {

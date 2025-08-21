@@ -1,12 +1,5 @@
 const mongoose = require('mongoose');
 
-const RowSchema = new mongoose.Schema(
-  {
-    data: { type: Object, required: true }, // key: header, value
-  },
-  { _id: false }
-);
-
 const DatasetSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
@@ -18,10 +11,9 @@ const DatasetSchema = new mongoose.Schema(
     },
     headers: [String],
     rowCount: { type: Number, default: 0 },
-    rows: [RowSchema],
+    rows: [{ data: { type: Object, default: {} } }],
   },
   { timestamps: true }
 );
 
 module.exports = mongoose.model('Dataset', DatasetSchema);
-

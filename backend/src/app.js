@@ -14,12 +14,12 @@ const filesRouter = require('./routes/files');
 
 const app = express();
 
-// Ensure upload directories exist for local storage
-const UPLOAD_DIR = process.env.UPLOAD_DIR || 'uploads';
-['', 'outputs'].forEach((sub) => {
-  const dir = path.join(process.cwd(), UPLOAD_DIR, sub);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-});
+// Remove upload directory creation - no longer needed
+// const UPLOAD_DIR = process.env.UPLOAD_DIR || 'uploads';
+// ['', 'outputs'].forEach((sub) => {
+//   const dir = path.join(process.cwd(), UPLOAD_DIR, sub);
+//   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+// });
 
 // DB
 connectDB();
@@ -37,10 +37,10 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(morgan('dev'));
 
-// Static files (legacy local uploads)
-app.use('/uploads', express.static(path.join(process.cwd(), UPLOAD_DIR)));
+// Remove static file serving - no longer needed
+// app.use('/uploads', express.static(path.join(process.cwd(), UPLOAD_DIR)));
 
-// File streaming from GridFS
+// File streaming from GridFS (now handles PDFs too)
 app.use('/files', filesRouter);
 
 // Health

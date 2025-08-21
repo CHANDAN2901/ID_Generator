@@ -91,6 +91,11 @@ async function loadImageBuffer(value) {
 }
 
 async function renderOne({ template, record }) {
+  console.log('renderOne called with:');
+  console.log('- Template fields:', template.fields?.length);
+  console.log('- Template mapping:', template.mapping);
+  console.log('- Record:', record);
+
   const isHexId = /^[a-f0-9]{24}$/i.test(String(template.image.key || ''));
   const fromGrid = template.image.storage === 'gridfs' || isHexId;
   const baseBuf = fromGrid ? await gridfs.readFileBuffer(template.image.key, 'templates') : null;
@@ -101,6 +106,14 @@ async function renderOne({ template, record }) {
   for (const field of template.fields || []) {
     const { type, x, y, width, height, style, id } = field;
     const sourceValue = template.mapping?.[id] ? record[template.mapping[id]] : undefined;
+    
+    // ADD DEBUGGING
+    console.log(`Field ${field.name}:`, {
+      id,
+      mappedTo: template.mapping?.[id],
+      sourceValue,
+      position: { x, y, width, height }
+    });
 
     // If explicitly an image field OR a text field that looks like an image URL, compose image
     if ((type === 'image' || (type !== 'image' && looksLikeImageUrl(String(sourceValue || '')))) && sourceValue) {

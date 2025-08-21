@@ -93,13 +93,15 @@ export default function App() {
   const onPreview = async () => {
     if (!template || !dataset) return
     setStatus(fieldsDirty ? 'Saving layout and generating preview...' : 'Generating preview...')
-    // save only if there are unsaved changes
+    
     if (fieldsDirty) {
-      const t = await saveLayout(template._id, { fields })
+      const t = await saveLayout(template._id, { fields, mapping })
       setTemplate(t)
       setFieldsDirty(false)
     }
+  
     const first = dataset.sampleRows?.[0] || {}
+    
     const { previewUrl } = await previewGenerate(template._id, first)
     setPreviewUrl(toAbsoluteUrl(previewUrl))
     setStatus('Preview ready')
