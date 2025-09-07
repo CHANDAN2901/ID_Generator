@@ -1,5 +1,6 @@
 import React from 'react'
 import { Stage, Layer, Rect, Text, Group, Transformer } from 'react-konva'
+import { Info } from 'lucide-react'
 
 export default function FieldEditor({ imageUrl, fields, onChange, width=350 }) {
   const [imgDim, setImgDim] = React.useState({ width: 0, height: 0 })
@@ -66,12 +67,12 @@ export default function FieldEditor({ imageUrl, fields, onChange, width=350 }) {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border bg-white">
+      <div className="rounded-xl border-2 border-gray-200 bg-white shadow-sm overflow-hidden">
         {imageUrl ? (
-          <Stage width={stageW} height={stageH} className="rounded-lg"
+          <Stage width={stageW} height={stageH} className="rounded-lg cursor-move"
                  onMouseDown={(e)=>{ if (e.target === e.target.getStage()) setSelectedId(null) }}>
             <Layer>
-              {/* background image via CSS */}
+              {/* background image */}
               <Rect x={0} y={0} width={stageW} height={stageH} fillPatternImage={img} fillPatternScaleX={scale} fillPatternScaleY={scale} listening={false} />
               {fields.map((f, i) => (
                 <Group key={f.id}
@@ -84,14 +85,22 @@ export default function FieldEditor({ imageUrl, fields, onChange, width=350 }) {
                         ref={(node)=>{ if (node) nodeRefs.current[f.id] = node }}
                         x={0} y={0}
                         width={Math.max(40, f.width*scale)} height={Math.max(20, f.height*scale)}
-                        stroke="#2563eb" dash={[6,4]} cornerRadius={6}
+                        fill={selectedId === f.id ? "rgba(59, 130, 246, 0.1)" : "rgba(255, 255, 255, 0.8)"}
+                        stroke={selectedId === f.id ? "#3b82f6" : "#6b7280"}
+                        strokeWidth={selectedId === f.id ? 2 : 1}
+                        dash={[6, 3]}
+                        cornerRadius={8}
+                        shadowBlur={selectedId === f.id ? 10 : 0}
+                        shadowColor="rgba(0, 0, 0, 0.1)"
                         onTransformEnd={()=>handleTransformEnd(i, f.id)}
                   />
                   <Text
-                        x={6} y={4}
+                        x={8} y={6}
                         text={String(f.name || '')}
-                        fontSize={12}
-                        fill="#2563eb"
+                        fontSize={13}
+                        fontFamily="system-ui, -apple-system, sans-serif"
+                        fill={selectedId === f.id ? "#1e40af" : "#374151"}
+                        fontStyle={selectedId === f.id ? "bold" : "normal"}
                         listening={false} />
                 </Group>
               ))}
@@ -99,6 +108,13 @@ export default function FieldEditor({ imageUrl, fields, onChange, width=350 }) {
                 ref={trRef}
                 rotateEnabled={false}
                 ignoreStroke
+                borderStroke="#3b82f6"
+                borderStrokeWidth={2}
+                borderDash={[4, 4]}
+                anchorStroke="#3b82f6"
+                anchorFill="white"
+                anchorSize={8}
+                anchorCornerRadius={2}
                 enabledAnchors={[
                   "top-left",
                   "top-center",
@@ -113,9 +129,24 @@ export default function FieldEditor({ imageUrl, fields, onChange, width=350 }) {
             </Layer>
           </Stage>
         ) : (
-          <div className="p-10 text-sm text-neutral-500">Upload a template and an Excel sheet to start arranging columns.</div>
+          <div className="p-12 text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-4">
+              <Info className="w-6 h-6 text-blue-600" />
+            </div>
+            <p className="text-sm text-gray-500">
+              Upload a template and data source to start designing
+            </p>
+          </div>
         )}
       </div>
+      
+      {imageUrl && fields.length > 0 && (
+        <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+          <p className="text-xs text-blue-700">
+            <strong>Tips:</strong> Click to select • Drag to move • Resize from corners • {fields.length} field{fields.length !== 1 && 's'} on template
+          </p>
+        </div>
+      )}
     </div>
   )
 }
