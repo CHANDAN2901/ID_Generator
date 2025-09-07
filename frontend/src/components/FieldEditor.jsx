@@ -2,12 +2,14 @@ import React from 'react'
 import { Stage, Layer, Rect, Text, Group, Transformer } from 'react-konva'
 import { Info } from 'lucide-react'
 
-export default function FieldEditor({ imageUrl, fields, onChange, width=350 }) {
+export default function FieldEditor({ imageUrl, fields, onChange, maxHeight }) {
   const [imgDim, setImgDim] = React.useState({ width: 0, height: 0 })
   const [img] = React.useState(() => new window.Image())
   const [selectedId, setSelectedId] = React.useState(null)
   const trRef = React.useRef(null)
   const nodeRefs = React.useRef({})
+  const containerRef = React.useRef(null)
+  const [containerWidth, setContainerWidth] = React.useState(0)
 
   React.useEffect(() => {
     if (!imageUrl) return
@@ -15,7 +17,32 @@ export default function FieldEditor({ imageUrl, fields, onChange, width=350 }) {
     img.onload = () => setImgDim({ width: img.width, height: img.height })
   }, [imageUrl])
 
-  const scale = imgDim.width ? width / imgDim.width : 1
+  React.useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.offsetWidth - 20)
+      }
+    }
+    updateSize()
+    window.addEventListener('resize', updateSize)
+    return () => window.removeEventListener('resize', updateSize)
+  }, [])
+
+  // Calculate scale to fit both width and height constraints
+  const getOptimalScale = () => {
+    if (!imgDim.width || !imgDim.height) return 1
+    
+    const maxW = containerWidth || 600
+    const maxH = maxHeight || 600
+    
+    const scaleW = maxW / imgDim.width
+    const scaleH = maxH / imgDim.height
+    
+    // Use the smaller scale to ensure it fits in both dimensions
+    return Math.min(scaleW, scaleH, 1) // Cap at 1 to avoid upscaling
+  }
+
+  const scale = getOptimalScale()
   const stageW = imgDim.width * scale
   const stageH = imgDim.height * scale
 
@@ -66,8 +93,8 @@ export default function FieldEditor({ imageUrl, fields, onChange, width=350 }) {
   }, [selectedId, fields, scale])
 
   return (
-    <div className="space-y-3">
-      <div className="rounded-xl border-2 border-gray-200 bg-white shadow-sm overflow-hidden">
+    <div className="w-full h-full" ref={containerRef}>
+      <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden inline-block">
         {imageUrl ? (
           <Stage width={stageW} height={stageH} className="rounded-lg cursor-move"
                  onMouseDown={(e)=>{ if (e.target === e.target.getStage()) setSelectedId(null) }}>
@@ -141,7 +168,7 @@ export default function FieldEditor({ imageUrl, fields, onChange, width=350 }) {
       </div>
       
       {imageUrl && fields.length > 0 && (
-        <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+        <div className="mt-2 p-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded border border-blue-200 inline-block">
           <p className="text-xs text-blue-700">
             <strong>Tips:</strong> Click to select • Drag to move • Resize from corners • {fields.length} field{fields.length !== 1 && 's'} on template
           </p>
