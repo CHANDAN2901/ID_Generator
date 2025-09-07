@@ -1,10 +1,15 @@
 const express = require("express");
 const PDFDocument = require("pdfkit");
+const sharp = require("sharp");
 const Template = require("../models/Template");
 const Dataset = require("../models/Dataset");
 const { renderOne } = require("../utils/render");
 const { uploadBuffer } = require("../utils/gridfs");
-const { convertToCMYK, isGhostscriptAvailable, CMYK_COLORS } = require("../utils/cmykPdf");
+const {
+  convertToCMYK,
+  isGhostscriptAvailable,
+  CMYK_COLORS,
+} = require("../utils/cmykPdf");
 
 const router = express.Router();
 // Preview: generate single record image and stream back (no disk write)
@@ -45,15 +50,17 @@ router.post("/batch", async (req, res, next) => {
     // Check if CMYK conversion is requested and Ghostscript is available
     const shouldConvertToCMYK = cmyk && isGhostscriptAvailable();
     if (cmyk && !isGhostscriptAvailable()) {
-      console.warn('CMYK conversion requested but Ghostscript not available. Generating RGB PDF.');
+      console.warn(
+        "CMYK conversion requested but Ghostscript not available. Generating RGB PDF."
+      );
     }
 
     // Create PDF in memory with CMYK-friendly settings
-    const doc = new PDFDocument({ 
-      size: "A4", 
+    const doc = new PDFDocument({
+      size: "A4",
       margin: 20,
       // Set color space to DeviceCMYK if supported
-      colorSpace: shouldConvertToCMYK ? 'DeviceCMYK' : 'DeviceRGB'
+      colorSpace: shouldConvertToCMYK ? "DeviceCMYK" : "DeviceRGB",
     });
     const chunks = [];
 
@@ -67,14 +74,60 @@ router.post("/batch", async (req, res, next) => {
     const usableWidth = pageWidth - 2 * margin;
     const usableHeight = pageHeight - 2 * margin;
 
-    // ATM card dimensions (85.60 × 53.98 mm) converted to points (1 mm = 2.834645669 points)
-    const cardWidth = 85.6 * 2.834645669; // ~242.65 points
-    const cardHeight = 53.98 * 2.834645669; // ~152.95 points
+    // Get actual template dimensions to preserve aspect ratio
+    const templateWidth = template.imageMeta?.width || 400;
+    const templateHeight = template.imageMeta?.height || 250;
+    const templateAspectRatio = templateWidth / templateHeight;
 
-    // Calculate grid layout
-    const cardsPerRow = Math.floor(usableWidth / cardWidth);
-    const cardsPerCol = Math.floor(usableHeight / cardHeight);
-    const cardsPerPage = cardsPerRow * cardsPerCol;
+    console.log(
+      `Template dimensions: ${templateWidth} x ${templateHeight} (ratio: ${templateAspectRatio.toFixed(
+        2
+      )})`
+    );
+
+    // Calculate optimal card size for PDF layout while preserving aspect ratio
+    // Try different layouts to find the best fit
+    let bestLayout = null;
+    let maxCardsPerPage = 0;
+
+    // Test different card widths to find optimal layout
+    for (
+      let testWidth = 200;
+      testWidth <= Math.min(400, usableWidth);
+      testWidth += 20
+    ) {
+      const testHeight = testWidth / templateAspectRatio;
+      const testCardsPerRow = Math.floor(usableWidth / testWidth);
+      const testCardsPerCol = Math.floor(usableHeight / testHeight);
+      const testCardsPerPage = testCardsPerRow * testCardsPerCol;
+
+      if (
+        testCardsPerPage > maxCardsPerPage &&
+        testCardsPerRow > 0 &&
+        testCardsPerCol > 0
+      ) {
+        maxCardsPerPage = testCardsPerPage;
+        bestLayout = {
+          cardWidth: testWidth,
+          cardHeight: testHeight,
+          cardsPerRow: testCardsPerRow,
+          cardsPerCol: testCardsPerCol,
+          cardsPerPage: testCardsPerPage,
+        };
+      }
+    }
+
+    // Use best layout or fallback
+    const { cardWidth, cardHeight, cardsPerRow, cardsPerCol, cardsPerPage } =
+      bestLayout || {
+        cardWidth: 280,
+        cardHeight: 280 / templateAspectRatio,
+        cardsPerRow: Math.floor(usableWidth / 280),
+        cardsPerCol: Math.floor(usableHeight / (280 / templateAspectRatio)),
+        cardsPerPage:
+          Math.floor(usableWidth / 280) *
+          Math.floor(usableHeight / (280 / templateAspectRatio)),
+      };
 
     console.log(
       `PDF Layout: ${cardsPerRow} cards per row, ${cardsPerCol} rows per page = ${cardsPerPage} cards per page`
@@ -95,9 +148,15 @@ router.post("/batch", async (req, res, next) => {
       // Add small registration marks at corners
       const markSize = 5;
       doc.rect(margin - markSize, margin - markSize, markSize, markSize).fill();
-      doc.rect(pageWidth - margin, margin - markSize, markSize, markSize).fill();
-      doc.rect(margin - markSize, pageHeight - margin, markSize, markSize).fill();
-      doc.rect(pageWidth - margin, pageHeight - margin, markSize, markSize).fill();
+      doc
+        .rect(pageWidth - margin, margin - markSize, markSize, markSize)
+        .fill();
+      doc
+        .rect(margin - markSize, pageHeight - margin, markSize, markSize)
+        .fill();
+      doc
+        .rect(pageWidth - margin, pageHeight - margin, markSize, markSize)
+        .fill();
     }
 
     // Process all rows
@@ -108,15 +167,23 @@ router.post("/batch", async (req, res, next) => {
       // Create new page if needed (first page or when current page is full)
       if (cardCount % cardsPerPage === 0) {
         if (cardCount > 0) doc.addPage();
-        
+
         // Add print marks to each new page
         if (shouldConvertToCMYK) {
           doc.fillColor(CMYK_COLORS.BLACK);
           const markSize = 5;
-          doc.rect(margin - markSize, margin - markSize, markSize, markSize).fill();
-          doc.rect(pageWidth - margin, margin - markSize, markSize, markSize).fill();
-          doc.rect(margin - markSize, pageHeight - margin, markSize, markSize).fill();
-          doc.rect(pageWidth - margin, pageHeight - margin, markSize, markSize).fill();
+          doc
+            .rect(margin - markSize, margin - markSize, markSize, markSize)
+            .fill();
+          doc
+            .rect(pageWidth - margin, margin - markSize, markSize, markSize)
+            .fill();
+          doc
+            .rect(margin - markSize, pageHeight - margin, markSize, markSize)
+            .fill();
+          doc
+            .rect(pageWidth - margin, pageHeight - margin, markSize, markSize)
+            .fill();
         }
       }
 
@@ -129,15 +196,53 @@ router.post("/batch", async (req, res, next) => {
         margin + horizontalSpacing + col * (cardWidth + horizontalSpacing);
       const y = margin + verticalSpacing + row * (cardHeight + verticalSpacing);
 
-      // Add card image to PDF
-      doc.image(buffer, x, y, { width: cardWidth, height: cardHeight });
+      // Add card image to PDF with proper aspect ratio preservation
+      try {
+        // Get the actual image dimensions from the buffer
+        const imageInfo = await sharp(buffer).metadata();
+        const imageAspectRatio = imageInfo.width / imageInfo.height;
+
+        // Calculate the best fit within the card bounds while preserving aspect ratio
+        let finalWidth, finalHeight;
+
+        if (imageAspectRatio > cardWidth / cardHeight) {
+          // Image is wider relative to card bounds, fit by width
+          finalWidth = cardWidth;
+          finalHeight = cardWidth / imageAspectRatio;
+        } else {
+          // Image is taller relative to card bounds, fit by height
+          finalHeight = cardHeight;
+          finalWidth = cardHeight * imageAspectRatio;
+        }
+
+        // Center the image within the card bounds
+        const offsetX = (cardWidth - finalWidth) / 2;
+        const offsetY = (cardHeight - finalHeight) / 2;
+
+        doc.image(buffer, x + offsetX, y + offsetY, {
+          width: finalWidth,
+          height: finalHeight,
+        });
+      } catch (imageError) {
+        console.warn(
+          "Failed to get image dimensions, using fit method:",
+          imageError.message
+        );
+        // Fallback to fit method - this preserves aspect ratio automatically
+        doc.image(buffer, x, y, {
+          fit: [cardWidth, cardHeight],
+          align: "center",
+          valign: "center",
+        });
+      }
 
       // Add optional border for cutting guides
       if (shouldConvertToCMYK) {
-        doc.strokeColor(CMYK_COLORS.LIGHT_GRAY)
-           .lineWidth(0.5)
-           .rect(x, y, cardWidth, cardHeight)
-           .stroke();
+        doc
+          .strokeColor(CMYK_COLORS.LIGHT_GRAY)
+          .lineWidth(0.5)
+          .rect(x, y, cardWidth, cardHeight)
+          .stroke();
       }
 
       cardCount++;
@@ -154,12 +259,15 @@ router.post("/batch", async (req, res, next) => {
         // Convert to CMYK if requested and Ghostscript is available
         if (shouldConvertToCMYK) {
           try {
-            console.log('Converting PDF to CMYK...');
+            console.log("Converting PDF to CMYK...");
             pdfBuffer = await convertToCMYK(pdfBuffer);
-            finalFileName = fileName.replace('.pdf', '-cmyk.pdf');
-            console.log('CMYK conversion completed successfully');
+            finalFileName = fileName.replace(".pdf", "-cmyk.pdf");
+            console.log("CMYK conversion completed successfully");
           } catch (cmykError) {
-            console.error('CMYK conversion failed, using RGB PDF:', cmykError.message);
+            console.error(
+              "CMYK conversion failed, using RGB PDF:",
+              cmykError.message
+            );
             // Continue with RGB PDF if CMYK conversion fails
           }
         }
@@ -174,12 +282,12 @@ router.post("/batch", async (req, res, next) => {
 
         // Return GridFS file URL instead of local file URL
         const pdfUrl = `/files/outputs/${fileId}`;
-        res.json({ 
-          pdfUrl, 
-          count: end - start, 
+        res.json({
+          pdfUrl,
+          count: end - start,
           fileId,
           cmykCompatible: shouldConvertToCMYK,
-          filename: finalFileName
+          filename: finalFileName,
         });
       } catch (uploadErr) {
         next(uploadErr);
@@ -198,9 +306,9 @@ router.get("/cmyk-support", (req, res) => {
   res.json({
     cmykSupported: ghostscriptAvailable,
     ghostscriptAvailable,
-    message: ghostscriptAvailable 
-      ? "CMYK PDF generation is supported" 
-      : "Install Ghostscript to enable CMYK PDF generation"
+    message: ghostscriptAvailable
+      ? "CMYK PDF generation is supported"
+      : "Install Ghostscript to enable CMYK PDF generation",
   });
 });
 
