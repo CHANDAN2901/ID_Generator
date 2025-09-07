@@ -43,8 +43,14 @@ export async function previewGenerate(templateId, record) {
   return data
 }
 
-export async function batchGenerate(templateId, datasetId, range) {
-  const { data } = await api.post('/generate/batch', { templateId, datasetId, range })
+export async function batchGenerate(templateId, datasetId, range, options = {}) {
+  const { cmyk = true } = options
+  const { data } = await api.post('/generate/batch', { templateId, datasetId, range, cmyk })
+  return data
+}
+
+export async function checkCMYKSupport() {
+  const { data } = await api.get('/generate/cmyk-support')
   return data
 }
 

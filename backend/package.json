@@ -6,7 +6,9 @@
   "main": "src/app.js",
   "scripts": {
     "dev": "nodemon src/app.js",
-    "start": "node src/app.js"
+    "start": "node src/app.js",
+    "setup-cmyk": "node scripts/setup-ghostscript.js",
+    "test-cmyk": "node test-cmyk.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -17,7 +19,8 @@
     "multer": "^1.4.5-lts.1",
     "pdfkit": "^0.15.0",
     "sharp": "^0.33.4",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "ghostscript4js": "^3.2.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.0"

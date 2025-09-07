@@ -7,11 +7,13 @@ A MERN stack web application for generating customized ID cards and images from 
 ## 🚀 Project Flow
 
 1. **Upload Template**
+
    - User uploads a PNG/JPG template image.
    - Image is stored in MongoDB GridFS.
    - Template metadata is saved in the database.
 
 2. **Define Fields & Mapping**
+
    - User uploads an Excel sheet (CSV/XLSX).
    - Columns are auto-detected and mapped to fields on the template.
    - User arranges fields visually on the template image.
@@ -28,15 +30,18 @@ A MERN stack web application for generating customized ID cards and images from 
 ### Templates
 
 - **POST /api/templates**
+
   - Upload a template image.
   - **Payload:** `multipart/form-data` with `file`
   - **Response:** `{ _id, name, image: { url }, fields, mapping }`
 
 - **GET /api/templates**
+
   - List all templates.
   - **Response:** `[{ _id, name, image, ... }]`
 
 - **GET /api/templates/:id**
+
   - Get template details.
   - **Response:** `{ _id, name, image, fields, mapping }`
 
@@ -48,6 +53,7 @@ A MERN stack web application for generating customized ID cards and images from 
 ### Datasets
 
 - **POST /api/datasets**
+
   - Upload an Excel/CSV file.
   - **Payload:** `multipart/form-data` with `file`
   - **Response:** `{ _id, headers, rowCount }`
@@ -59,6 +65,7 @@ A MERN stack web application for generating customized ID cards and images from 
 ### Generate
 
 - **POST /api/generate/preview**
+
   - Generate a preview image for a single record.
   - **Payload:** `{ templateId, record }`
   - **Response:** `{ previewUrl }` (base64 image)
@@ -124,10 +131,12 @@ npm run dev            # Starts frontend on http://localhost:5173
 ### Upload Template
 
 **Request:**
+
 - `POST /api/templates`
 - FormData: `file=<image>`
 
 **Response:**
+
 ```json
 {
   "_id": "...",
@@ -141,10 +150,12 @@ npm run dev            # Starts frontend on http://localhost:5173
 ### Upload Dataset
 
 **Request:**
+
 - `POST /api/datasets`
 - FormData: `file=<excel/csv>`
 
 **Response:**
+
 ```json
 {
   "_id": "...",
@@ -156,10 +167,12 @@ npm run dev            # Starts frontend on http://localhost:5173
 ### Generate Preview
 
 **Request:**
+
 - `POST /api/generate/preview`
 - JSON: `{ "templateId": "...", "record": { "Name": "Alice", ... } }`
 
 **Response:**
+
 ```json
 {
   "previewUrl": "data:image/png;base64,..."
@@ -169,25 +182,69 @@ npm run dev            # Starts frontend on http://localhost:5173
 ### Generate Batch PDF
 
 **Request:**
+
 - `POST /api/generate/batch`
-- JSON: `{ "templateId": "...", "datasetId": "..." }`
+- JSON: `{ "templateId": "...", "datasetId": "...", "cmyk": true }`
 
 **Response:**
+
 ```json
 {
-  "pdfUrl": "/uploads/outputs/batch-<timestamp>.pdf",
-  "count": 10
+  "pdfUrl": "/files/outputs/<fileId>",
+  "count": 10,
+  "cmykCompatible": true,
+  "filename": "batch-timestamp-cmyk.pdf"
+}
+```
+
+### Check CMYK Support
+
+**Request:**
+
+- `GET /api/generate/cmyk-support`
+
+**Response:**
+
+```json
+{
+  "cmykSupported": true,
+  "ghostscriptAvailable": true,
+  "message": "CMYK PDF generation is supported"
 }
 ```
 
 ---
 
+## 🎨 CMYK PDF Support
+
+This application supports professional CMYK PDF generation for print-ready ID cards.
+
+### Quick Setup
+
+```bash
+cd backend
+npm run setup-cmyk  # Installs Ghostscript automatically
+```
+
+### Features
+
+- ✅ CMYK color space conversion
+- ✅ Print registration marks
+- ✅ Crop marks for cutting guides
+- ✅ Professional print layout
+- ✅ Fallback to RGB if CMYK unavailable
+
+For detailed CMYK setup instructions, see [CMYK_SETUP.md](./CMYK_SETUP.md).
+
 ## 📖 Notes
+
 - All environment variables are configured via `.env` files in each folder.
+- CMYK PDF generation requires Ghostscript installation.
 - `uploads/` stores generated files and previews (ignored by git).
 - For development, backend runs on port 5000, frontend on 5173 by default.
 
 ---
 
 ## License
+
 MIT

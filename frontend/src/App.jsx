@@ -2,9 +2,10 @@ import React from 'react'
 import {
   uploadTemplate, saveLayout,
   uploadDataset, getDataset, previewGenerate, batchGenerate,
-  toAbsoluteUrl
+  checkCMYKSupport, toAbsoluteUrl
 } from './lib/api'
 import FieldEditor from './components/FieldEditor'
+import CMYKSetupGuide from './components/CMYKSetupGuide'
 
 function Section({ title, children }) {
   return (
@@ -23,6 +24,28 @@ export default function App() {
   const [previewUrl, setPreviewUrl] = React.useState('')
   const [status, setStatus] = React.useState('')
   const [fieldsDirty, setFieldsDirty] = React.useState(false)
+  const [cmykSupport, setCmykSupport] = React.useState(null)
+  const [pdfFormat, setPdfFormat] = React.useState('cmyk') // 'cmyk' or 'rgb'
+  const [showCmykGuide, setShowCmykGuide] = React.useState(false)
+
+  // Check CMYK support on component mount
+  React.useEffect(() => {
+    const checkSupport = async () => {
+      try {
+        const support = await checkCMYKSupport()
+        setCmykSupport(support)
+        // Default to RGB if CMYK not supported
+        if (!support.cmykSupported) {
+          setPdfFormat('rgb')
+        }
+      } catch (error) {
+        console.warn('Failed to check CMYK support:', error)
+        setCmykSupport({ cmykSupported: false, message: 'Unable to check CMYK support' })
+        setPdfFormat('rgb')
+      }
+    }
+    checkSupport()
+  }, [])
 
 
   const mappingChanged = React.useMemo(() => {
@@ -107,17 +130,34 @@ export default function App() {
     setStatus('Preview ready')
   }
 
-  const onDownloadPDF = async () => {
+  const onDownloadPDF = async (format = pdfFormat) => {
     if (!template || !dataset) return
-    setStatus(fieldsDirty ? 'Saving layout and generating PDF...' : 'Generating PDF...')
+    
+    const isCmyk = format === 'cmyk'
+    const formatLabel = isCmyk ? 'CMYK PDF' : 'RGB PDF'
+    
+    setStatus(fieldsDirty ? `Saving layout and generating ${formatLabel}...` : `Generating ${formatLabel}...`)
+    
     if (fieldsDirty) {
       const t = await saveLayout(template._id, { fields })
       setTemplate(t)
       setFieldsDirty(false)
     }
-    const { pdfUrl } = await batchGenerate(template._id, dataset._id)
-    window.open(toAbsoluteUrl(pdfUrl), '_blank')
-    setStatus('PDF generated')
+    
+    try {
+      const result = await batchGenerate(template._id, dataset._id, null, { cmyk: isCmyk })
+      window.open(toAbsoluteUrl(result.pdfUrl), '_blank')
+      
+      const successMessage = isCmyk && result.cmykCompatible 
+        ? 'CMYK PDF generated (print-ready)' 
+        : isCmyk && !result.cmykCompatible
+        ? 'RGB PDF generated (CMYK conversion unavailable)'
+        : 'RGB PDF generated'
+      
+      setStatus(successMessage)
+    } catch (error) {
+      setStatus(`Failed to generate ${formatLabel}: ${error.message}`)
+    }
   }
 
   const handleFieldsChange = (updated) => {
@@ -128,7 +168,18 @@ export default function App() {
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       <header className="pt-2">
-        <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-neutral-900 to-neutral-600">ID Card Generator</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-neutral-900 to-neutral-600">ID Card Generator</h1>
+          {cmykSupport && (
+            <div className={`text-xs px-2 py-1 rounded-full ${
+              cmykSupport.cmykSupported 
+                ? 'bg-green-100 text-green-700' 
+                : 'bg-amber-100 text-amber-700'
+            }`}>
+              {cmykSupport.cmykSupported ? '🎨 CMYK Ready' : '🖥️ RGB Only'}
+            </div>
+          )}
+        </div>
       </header>
 
       <div className="grid grid-cols-12 gap-6">
@@ -158,15 +209,122 @@ export default function App() {
             )}
           </Section>
 
-          <Section title="Preview">
+          <Section title="Preview & Generate">
             {previewUrl ? (
               <img src={previewUrl} alt="Preview" className="rounded border max-h-72 object-contain" />
             ) : (
               <div className="text-sm text-neutral-500">No preview yet.</div>
             )}
+            
+            {/* PDF Format Selection */}
+            <div className="mt-4 p-3 bg-neutral-50 rounded-lg border">
+              <div className="text-sm font-medium text-neutral-700 mb-2">PDF Format</div>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2">
+                  <input 
+                    type="radio" 
+                    name="pdfFormat" 
+                    value="cmyk" 
+                    checked={pdfFormat === 'cmyk'}
+                    onChange={(e) => setPdfFormat(e.target.value)}
+                    disabled={!cmykSupport?.cmykSupported}
+                    className="text-blue-600"
+                  />
+                  <span className="text-sm">
+                    CMYK (Print-ready)
+                    {cmykSupport?.cmykSupported ? (
+                      <span className="ml-1 text-xs text-green-600">✓ Available</span>
+                    ) : (
+                      <span className="ml-1 text-xs text-amber-600">⚠ Requires Ghostscript</span>
+                    )}
+                  </span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input 
+                    type="radio" 
+                    name="pdfFormat" 
+                    value="rgb" 
+                    checked={pdfFormat === 'rgb'}
+                    onChange={(e) => setPdfFormat(e.target.value)}
+                    className="text-blue-600"
+                  />
+                  <span className="text-sm">RGB (Screen/Web)</span>
+                </label>
+              </div>
+              {cmykSupport && !cmykSupport.cmykSupported && (
+                <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                  <div className="flex items-center justify-between">
+                    <span>{cmykSupport.message}</span>
+                    <div className="flex gap-1">
+                      <button 
+                        onClick={() => setShowCmykGuide(true)}
+                        className="text-blue-600 underline hover:text-blue-800"
+                      >
+                        Setup Guide
+                      </button>
+                      <span className="text-amber-600">|</span>
+                      <button 
+                        onClick={async () => {
+                          const support = await checkCMYKSupport()
+                          setCmykSupport(support)
+                          if (support.cmykSupported) {
+                            setPdfFormat('cmyk')
+                            setStatus('CMYK support detected! 🎉')
+                          }
+                        }}
+                        className="text-blue-600 underline hover:text-blue-800"
+                      >
+                        Recheck
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="mt-3 flex flex-wrap gap-2">
-              <button className="px-3 py-1.5 bg-neutral-900 text-white rounded text-sm disabled:opacity-50" onClick={onPreview} disabled={!template || !dataset}>Generate Preview</button>
-              <button className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm disabled:opacity-50" onClick={onDownloadPDF} disabled={!template || !dataset}>Download PDF</button>
+              <button 
+                className="px-3 py-1.5 bg-neutral-900 text-white rounded text-sm disabled:opacity-50" 
+                onClick={onPreview} 
+                disabled={!template || !dataset}
+              >
+                Generate Preview
+              </button>
+              
+              <div className="flex gap-1">
+                <button 
+                  className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm disabled:opacity-50 flex items-center gap-1" 
+                  onClick={() => onDownloadPDF(pdfFormat)} 
+                  disabled={!template || !dataset}
+                >
+                  {pdfFormat === 'cmyk' ? '🎨' : '🖥️'} 
+                  Download {pdfFormat.toUpperCase()} PDF
+                </button>
+                
+                {/* Quick action buttons for both formats */}
+                {cmykSupport?.cmykSupported && pdfFormat === 'rgb' && (
+                  <button 
+                    className="px-2 py-1.5 bg-purple-600 text-white rounded text-sm disabled:opacity-50" 
+                    onClick={() => onDownloadPDF('cmyk')} 
+                    disabled={!template || !dataset}
+                    title="Generate CMYK PDF"
+                  >
+                    🎨
+                  </button>
+                )}
+                
+                {pdfFormat === 'cmyk' && (
+                  <button 
+                    className="px-2 py-1.5 bg-gray-600 text-white rounded text-sm disabled:opacity-50" 
+                    onClick={() => onDownloadPDF('rgb')} 
+                    disabled={!template || !dataset}
+                    title="Generate RGB PDF"
+                  >
+                    🖥️
+                  </button>
+                )}
+              </div>
+              
               {previewUrl && (
                 <button className="px-3 py-1.5 bg-neutral-100 text-neutral-700 rounded text-sm" onClick={()=>setPreviewUrl('')}>Clear Preview</button>
               )}
@@ -206,6 +364,11 @@ export default function App() {
           </Section>
         </div>
       </div>
+      
+      <CMYKSetupGuide 
+        isOpen={showCmykGuide} 
+        onClose={() => setShowCmykGuide(false)} 
+      />
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import React from 'react'
 import { Stage, Layer, Rect, Text, Group, Transformer } from 'react-konva'
 
-export default function FieldEditor({ imageUrl, fields, onChange, width=500 }) {
+export default function FieldEditor({ imageUrl, fields, onChange, width=350 }) {
   const [imgDim, setImgDim] = React.useState({ width: 0, height: 0 })
   const [img] = React.useState(() => new window.Image())
   const [selectedId, setSelectedId] = React.useState(null)
