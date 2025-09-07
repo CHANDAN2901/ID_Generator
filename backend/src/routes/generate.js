@@ -7,6 +7,7 @@ const { renderOne } = require("../utils/render");
 const { uploadBuffer } = require("../utils/gridfs");
 const {
   convertToCMYK,
+  convertToCMYKWithValidation,
   isGhostscriptAvailable,
   CMYK_COLORS,
 } = require("../utils/cmykPdf");
@@ -55,12 +56,14 @@ router.post("/batch", async (req, res, next) => {
       );
     }
 
-    // Create PDF in memory with CMYK-friendly settings
+    // Create PDF in memory with enhanced CMYK settings
     const doc = new PDFDocument({
       size: "A4",
       margin: 20,
-      // Set color space to DeviceCMYK if supported
+      // Enhanced CMYK settings for professional printing
       colorSpace: shouldConvertToCMYK ? "DeviceCMYK" : "DeviceRGB",
+      pdfVersion: "1.4", // Ensure compatibility with CMYK workflows
+      compress: false, // Better for CMYK conversion
     });
     const chunks = [];
 
@@ -140,24 +143,27 @@ router.post("/batch", async (req, res, next) => {
       (usableHeight - cardsPerCol * cardHeight) / (cardsPerCol + 1);
 
     let cardCount = 0;
+    let isFirstPage = true;
 
-    // Add print marks and color bars for professional printing (optional)
-    if (shouldConvertToCMYK) {
-      // Add crop marks and color registration marks
+    // Function to add print marks to a page (only when we have content)
+    const addPrintMarks = () => {
+      if (!shouldConvertToCMYK) return;
+      
+      // Enhanced crop marks and color registration marks using pure CMYK colors
       doc.fillColor(CMYK_COLORS.BLACK);
-      // Add small registration marks at corners
-      const markSize = 5;
-      doc.rect(margin - markSize, margin - markSize, markSize, markSize).fill();
-      doc
-        .rect(pageWidth - margin, margin - markSize, markSize, markSize)
-        .fill();
-      doc
-        .rect(margin - markSize, pageHeight - margin, markSize, markSize)
-        .fill();
-      doc
-        .rect(pageWidth - margin, pageHeight - margin, markSize, markSize)
-        .fill();
-    }
+
+      // Corner registration marks with proper crop marks (smaller to avoid issues)
+      const markSize = 4;
+      const markOffset = 6;
+
+      // Simple corner marks
+      doc.rect(margin - markOffset, margin - markOffset, markSize, markSize).fill();
+      doc.rect(pageWidth - margin + markOffset - markSize, margin - markOffset, markSize, markSize).fill();
+      doc.rect(margin - markOffset, pageHeight - margin + markOffset - markSize, markSize, markSize).fill();
+      doc.rect(pageWidth - margin + markOffset - markSize, pageHeight - margin + markOffset - markSize, markSize, markSize).fill();
+    };
+
+
 
     // Process all rows
     for (let i = start; i < end; i++) {
@@ -166,25 +172,11 @@ router.post("/batch", async (req, res, next) => {
 
       // Create new page if needed (first page or when current page is full)
       if (cardCount % cardsPerPage === 0) {
-        if (cardCount > 0) doc.addPage();
-
-        // Add print marks to each new page
-        if (shouldConvertToCMYK) {
-          doc.fillColor(CMYK_COLORS.BLACK);
-          const markSize = 5;
-          doc
-            .rect(margin - markSize, margin - markSize, markSize, markSize)
-            .fill();
-          doc
-            .rect(pageWidth - margin, margin - markSize, markSize, markSize)
-            .fill();
-          doc
-            .rect(margin - markSize, pageHeight - margin, markSize, markSize)
-            .fill();
-          doc
-            .rect(pageWidth - margin, pageHeight - margin, markSize, markSize)
-            .fill();
+        if (cardCount > 0) {
+          doc.addPage();
         }
+        // Add print marks only after we have content on the page
+        addPrintMarks();
       }
 
       // Calculate position on current page
@@ -236,12 +228,85 @@ router.post("/batch", async (req, res, next) => {
         });
       }
 
-      // Add optional border for cutting guides
+      // Add professional cutting guides using CMYK colors
       if (shouldConvertToCMYK) {
+        // Main card border in light gray CMYK
         doc
           .strokeColor(CMYK_COLORS.LIGHT_GRAY)
           .lineWidth(0.5)
           .rect(x, y, cardWidth, cardHeight)
+          .stroke();
+
+        // Add corner crop marks for precise cutting
+        const cropMarkLength = 6;
+        const cropMarkOffset = 2;
+
+        doc
+          .strokeColor([0, 0, 0, 0.3]) // 30% black in CMYK
+          .lineWidth(0.25);
+
+        // Top-left corner crop marks
+        doc
+          .moveTo(x - cropMarkOffset, y - cropMarkOffset - cropMarkLength)
+          .lineTo(x - cropMarkOffset, y - cropMarkOffset)
+          .stroke();
+        doc
+          .moveTo(x - cropMarkOffset - cropMarkLength, y - cropMarkOffset)
+          .lineTo(x - cropMarkOffset, y - cropMarkOffset)
+          .stroke();
+
+        // Top-right corner crop marks
+        doc
+          .moveTo(
+            x + cardWidth + cropMarkOffset,
+            y - cropMarkOffset - cropMarkLength
+          )
+          .lineTo(x + cardWidth + cropMarkOffset, y - cropMarkOffset)
+          .stroke();
+        doc
+          .moveTo(
+            x + cardWidth + cropMarkOffset + cropMarkLength,
+            y - cropMarkOffset
+          )
+          .lineTo(x + cardWidth + cropMarkOffset, y - cropMarkOffset)
+          .stroke();
+
+        // Bottom-left corner crop marks
+        doc
+          .moveTo(
+            x - cropMarkOffset,
+            y + cardHeight + cropMarkOffset + cropMarkLength
+          )
+          .lineTo(x - cropMarkOffset, y + cardHeight + cropMarkOffset)
+          .stroke();
+        doc
+          .moveTo(
+            x - cropMarkOffset - cropMarkLength,
+            y + cardHeight + cropMarkOffset
+          )
+          .lineTo(x - cropMarkOffset, y + cardHeight + cropMarkOffset)
+          .stroke();
+
+        // Bottom-right corner crop marks
+        doc
+          .moveTo(
+            x + cardWidth + cropMarkOffset,
+            y + cardHeight + cropMarkOffset + cropMarkLength
+          )
+          .lineTo(
+            x + cardWidth + cropMarkOffset,
+            y + cardHeight + cropMarkOffset
+          )
+          .stroke();
+        doc
+          .moveTo(
+            x + cardWidth + cropMarkOffset + cropMarkLength,
+            y + cardHeight + cropMarkOffset
+          )
+          .lineTo(
+            x + cardWidth + cropMarkOffset,
+            y + cardHeight + cropMarkOffset
+          )
           .stroke();
       }
 
@@ -256,19 +321,46 @@ router.post("/batch", async (req, res, next) => {
         let pdfBuffer = Buffer.concat(chunks);
         let finalFileName = fileName;
 
-        // Convert to CMYK if requested and Ghostscript is available
+        // Enhanced CMYK conversion with validation for vectors AND images
+        let conversionResult = null;
         if (shouldConvertToCMYK) {
           try {
-            console.log("Converting PDF to CMYK...");
-            pdfBuffer = await convertToCMYK(pdfBuffer);
+            console.log("Converting PDF to CMYK (vectors + images)...");
+
+            // Use enhanced conversion with validation
+            conversionResult = await convertToCMYKWithValidation(pdfBuffer, {
+              imageQuality: "high",
+              preserveTransparency: false,
+            });
+
+            pdfBuffer = conversionResult.buffer;
             finalFileName = fileName.replace(".pdf", "-cmyk.pdf");
-            console.log("CMYK conversion completed successfully");
+
+            console.log(`CMYK conversion completed successfully:`);
+            console.log(
+              `- Fully converted: ${
+                conversionResult.fullyConverted ? "Yes" : "No"
+              }`
+            );
+            console.log(
+              `- Original size: ${(
+                conversionResult.originalSize / 1024
+              ).toFixed(1)} KB`
+            );
+            console.log(
+              `- CMYK size: ${(conversionResult.size / 1024).toFixed(1)} KB`
+            );
+
+            if (!conversionResult.fullyConverted) {
+              console.warn("Warning: PDF may still contain some RGB elements");
+            }
           } catch (cmykError) {
             console.error(
-              "CMYK conversion failed, using RGB PDF:",
+              "Enhanced CMYK conversion failed, using RGB PDF:",
               cmykError.message
             );
             // Continue with RGB PDF if CMYK conversion fails
+            conversionResult = null;
           }
         }
 
@@ -288,6 +380,18 @@ router.post("/batch", async (req, res, next) => {
           fileId,
           cmykCompatible: shouldConvertToCMYK,
           filename: finalFileName,
+          // Enhanced CMYK conversion results
+          cmykConversion: conversionResult
+            ? {
+                fullyConverted: conversionResult.fullyConverted,
+                originalSize: conversionResult.originalSize,
+                cmykSize: conversionResult.size,
+                compressionRatio: (
+                  conversionResult.size / conversionResult.originalSize
+                ).toFixed(2),
+                validation: conversionResult.validation,
+              }
+            : null,
         });
       } catch (uploadErr) {
         next(uploadErr);
