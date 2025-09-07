@@ -9,8 +9,7 @@
     "start": "node src/app.js",
     "setup-cmyk": "node scripts/setup-ghostscript.js",
     "test-cmyk": "node test-cmyk.js",
-    "test-aspect": "node test-aspect-ratio.js",
-    "test-image-cmyk": "node test-image-cmyk.js"
+    "test-aspect": "node test-aspect-ratio.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

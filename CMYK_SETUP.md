@@ -1,14 +1,10 @@
-# Enhanced CMYK PDF Generation Setup
+# CMYK PDF Generation Setup
 
-This guide explains how to enable **fully CMYK-compatible PDF generation** for professional printing in your ID Generator application. The enhanced system converts **both vector elements AND embedded images** to CMYK color space.
+This guide explains how to enable CMYK-compatible PDF generation for professional printing in your ID Generator application.
 
-## 🎨 What is Enhanced CMYK?
+## 🎨 What is CMYK?
 
-CMYK (Cyan, Magenta, Yellow, Black) is the color model used in professional printing. Our enhanced implementation ensures:
-- ✅ **Vector elements** (text, shapes, borders) use pure CMYK colors
-- ✅ **Embedded images** are converted from RGB to CMYK
-- ✅ **Print marks** and color calibration bars for professional output
-- ✅ **Validation** to ensure complete CMYK conversion
+CMYK (Cyan, Magenta, Yellow, Black) is the color model used in professional printing. Unlike RGB colors used on screens, CMYK ensures accurate color reproduction when printing ID cards or documents.
 
 ## 🔧 Prerequisites
 
@@ -237,113 +233,3 @@ If you encounter issues with CMYK PDF generation:
 4. Test with a small dataset first
 
 For additional help, refer to the main project documentation or create an issue in the repository.
-
-## 🚀 Enhanced CMYK Features
-
-### Full Vector + Image Conversion
-The enhanced system uses advanced Ghostscript parameters to ensure complete CMYK conversion:
-
-```bash
-gs -dSAFER -dBATCH -dNOPAUSE \
-   -sDEVICE=pdfwrite \
-   -dProcessColorModel=DeviceCMYK \
-   -sColorConversionStrategy=CMYK \
-   -sColorConversionStrategyForImages=CMYK \
-   -dConvertCMYKImagesToRGB=false \
-   -dColorImageResolution=300 \
-   -sOutputFile=output-cmyk.pdf input.pdf
-```
-
-### Professional Print Features
-- **CMYK Color Bars**: Cyan, Magenta, Yellow, Black calibration strips
-- **Registration Marks**: Corner marks for print alignment  
-- **Crop Marks**: Precise cutting guides for each ID card
-- **Rich Black**: Enhanced black using C:30 M:30 Y:30 K:100
-
-### Validation System
-Every CMYK conversion is validated to ensure:
-- ✅ Complete vector conversion to CMYK
-- ✅ All images converted from RGB to CMYK  
-- ✅ No remaining RGB color spaces
-- ✅ Professional print readiness
-
-### Enhanced API Response
-```json
-{
-  "pdfUrl": "/files/outputs/file_id",
-  "cmykConversion": {
-    "fullyConverted": true,
-    "originalSize": 2048576,
-    "cmykSize": 2156789,
-    "compressionRatio": "1.05",
-    "validation": {
-      "isCMYK": true,
-      "hasRGB": false,
-      "fullyConverted": true
-    }
-  }
-}
-```
-
-## 🧪 Enhanced Testing
-
-### Comprehensive Test
-```bash
-npm run test-cmyk
-```
-
-This enhanced test:
-1. Creates a PDF with both vector and image content
-2. Converts using the enhanced CMYK pipeline
-3. Validates complete conversion
-4. Saves test files for inspection
-5. Reports detailed conversion metrics
-
-### Test Output Example
-```
-🧪 Testing CMYK PDF Generation
-
-1. Checking Ghostscript availability...
-   Ghostscript: ✅ Available
-
-2. Creating test image with RGB content...
-3. Creating test PDF with vectors and images...
-   Original PDF created: 45.2 KB
-
-4. Analyzing original PDF...
-   Original has CMYK: true
-   Original has RGB: true
-
-5. Converting to fully CMYK (vectors + images)...
-   CMYK PDF created: 47.8 KB
-   Compression ratio: Fully converted
-   Size change: +5.8%
-
-📊 Conversion Results:
-   ✅ Fully CMYK: Yes
-   🎨 Has CMYK content: Yes
-   🖥️ Has RGB content: No
-
-🎉 Perfect! Your system generates fully CMYK PDFs.
-   Both vector elements AND images are converted to CMYK.
-```
-
-## 🎯 Professional Printing Benefits
-
-### Print Shop Ready
-- **DeviceCMYK Color Space**: Industry standard for professional printing
-- **300 DPI Image Resolution**: Crisp, high-quality output
-- **Color Calibration Bars**: Ensures accurate color reproduction
-- **Registration Marks**: Perfect print alignment
-
-### Quality Assurance
-- **Validation Reports**: Confirms complete CMYK conversion
-- **Size Optimization**: Efficient file sizes for print workflows
-- **Error Handling**: Graceful fallbacks if conversion fails
-- **Detailed Logging**: Track conversion success and metrics
-
-### Cost Savings
-- **Reduced Reprints**: Accurate colors from the start
-- **Faster Turnaround**: Print-ready files eliminate pre-press work
-- **Professional Quality**: Consistent results across print runs
-- **Industry Compliance**: Meets professional printing standards
